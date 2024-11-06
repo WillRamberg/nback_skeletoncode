@@ -15,19 +15,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameViewModel
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameVM
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameType
 import mobappdev.example.nback_cimpl.ui.viewmodels.FakeVM
 import mobappdev.example.nback_cimpl.R
+import mobappdev.example.nback_cimpl.ui.viewmodels.GameState
 import mobappdev.example.nback_cimpl.ui.viewmodels.MatchStatus
 
 @Composable
 fun GameScreen(vm: GameViewModel) {
     val gameState by vm.gameState.collectAsState()
     val score by vm.score.collectAsState()
+    val currentIndex by vm.currentIndex.collectAsState()
 
     // Reset color flash after a delay
     if (gameState.matchStatus != MatchStatus.NONE) {
@@ -48,38 +52,48 @@ fun GameScreen(vm: GameViewModel) {
             text = "Score: $score",
             style = MaterialTheme.typography.headlineLarge
         )
+        Text(
+            text = "Current event: \n${currentIndex+1}",
+            textAlign = TextAlign.Center
+        )
 
-        for (row in 0 until 3) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                for (col in 0 until 3) {
-                    val index = row * 3 + col + 1
-                    val circleColor = when {
-                        index == gameState.eventValue -> when (gameState.matchStatus) {
-                            MatchStatus.CORRECT -> Color.Green
-                            MatchStatus.INCORRECT -> Color.Red
-                            else -> Color.Yellow
+        if(gameState.gameType == GameType.Visual) {
+            for (row in 0 until 3) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    for (col in 0 until 3) {
+                        val index = row * 3 + col + 1
+                        val circleColor = when {
+                            index == gameState.eventValue -> when (gameState.matchStatus) {
+                                MatchStatus.CORRECT -> Color.Green
+                                MatchStatus.INCORRECT -> Color.Red
+                                else -> {
+                                    Color.Gray
+                                    Color.Yellow
+                                }
+                            }
+
+                            else -> Color.Gray
                         }
-                        else -> Color.Gray
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .padding(4.dp)
-                            .background(circleColor, shape = CircleShape)
-                    )
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .padding(4.dp)
+                                .background(circleColor, shape = CircleShape)
+                        )
+                    }
                 }
             }
         }
-
-        Button(
-            onClick = { vm.startGame() },
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text(text = "Start Game")
+        else{
+            Text(
+                text = "Currently playing audio",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
 
         Button(

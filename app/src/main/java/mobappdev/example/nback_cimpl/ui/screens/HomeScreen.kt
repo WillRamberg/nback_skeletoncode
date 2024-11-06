@@ -21,10 +21,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.rememberNavController
 import mobappdev.example.nback_cimpl.ui.viewmodels.FakeVM
+import mobappdev.example.nback_cimpl.ui.viewmodels.GameType
 
 @Composable
 fun HomeScreen(vm: GameViewModel, navController: NavController) {
     val highscore by vm.highscore.collectAsState()
+    val nBack by vm.nBack.collectAsState()
+    val eventInterval by vm.eventInterval.collectAsState()
+    val correctNumbers by vm.correctNumbers.collectAsState()
     val gameState by vm.gameState.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -40,24 +44,29 @@ fun HomeScreen(vm: GameViewModel, navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                modifier = Modifier.padding(32.dp),
-                text = "High-Score = $highscore",
-                style = MaterialTheme.typography.headlineLarge
+                modifier = Modifier.padding(20.dp),
+                text = "High-Score: \n$highscore",
+                style = MaterialTheme.typography.headlineLarge,
+                textAlign = TextAlign.Center
             )
-
-            // Box for displaying the current event value
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                if (gameState.eventValue != -1) {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = "Current eventValue is: ${gameState.eventValue}",
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            Text(
+                modifier = Modifier.padding(20.dp),
+                text = "Value of N: \n$nBack",
+                style = MaterialTheme.typography.displaySmall,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                modifier = Modifier.padding(20.dp),
+                text = "Interval: \n$eventInterval",
+                style = MaterialTheme.typography.headlineLarge,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                modifier = Modifier.padding(20.dp),
+                text = "Correct numbers: \n$correctNumbers",
+                style = MaterialTheme.typography.headlineLarge,
+                textAlign = TextAlign.Center
+            )
 
             Text(
                 modifier = Modifier.padding(16.dp),
@@ -73,12 +82,10 @@ fun HomeScreen(vm: GameViewModel, navController: NavController) {
             ) {
                 // Button for Audio Game
                 Button(onClick = {
-                    scope.launch {
-                        snackBarHostState.showSnackbar(
-                            message = "Hey! you clicked the audio button"
-                        )
-                    }
-                }) {
+                    vm.setGameType(GameType.Audio)
+                    vm.startGame()
+                    navController.navigate("game")
+                    }) {
                     Icon(
                         painter = painterResource(id = R.drawable.sound_on),
                         contentDescription = "Sound",
@@ -90,6 +97,8 @@ fun HomeScreen(vm: GameViewModel, navController: NavController) {
 
                 // Button for Visual Game
                 Button(onClick = {
+                    vm.setGameType(GameType.Visual)
+                    vm.startGame()
                     navController.navigate("game")  // Navigate to the GameScreen
                 }) {
                     Icon(
