@@ -28,7 +28,6 @@ fun HomeScreen(vm: GameViewModel, navController: NavController) {
     val highscore by vm.highscore.collectAsState()
     val nBack by vm.nBack.collectAsState()
     val eventInterval by vm.eventInterval.collectAsState()
-    val correctNumbers by vm.correctNumbers.collectAsState()
     val gameState by vm.gameState.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -58,12 +57,6 @@ fun HomeScreen(vm: GameViewModel, navController: NavController) {
             Text(
                 modifier = Modifier.padding(20.dp),
                 text = "Interval: \n$eventInterval",
-                style = MaterialTheme.typography.headlineLarge,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                modifier = Modifier.padding(20.dp),
-                text = "Correct numbers: \n$correctNumbers",
                 style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center
             )

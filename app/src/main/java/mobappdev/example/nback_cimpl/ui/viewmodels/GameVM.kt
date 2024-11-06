@@ -126,6 +126,7 @@ class GameVM(
 
             if (currentEvent == nBackEvent && !matchChecked) {
                 _score.value += 1
+                _correctNumbers.value += 1
                 matchChecked = true
                 _gameState.value = _gameState.value.copy(matchStatus = MatchStatus.CORRECT)
             } else if (!matchChecked) {
@@ -151,6 +152,7 @@ class GameVM(
         _currentIndex.value = -1  // Reset index to its initial state
         matchChecked = false // Reset match check status
         events = emptyArray() // Clear any generated events
+        _correctNumbers.value = 0
 
         Log.d("GameVM", "Game has been reset.")
     }

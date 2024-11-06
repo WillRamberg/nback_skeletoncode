@@ -32,6 +32,7 @@ fun GameScreen(vm: GameViewModel) {
     val gameState by vm.gameState.collectAsState()
     val score by vm.score.collectAsState()
     val currentIndex by vm.currentIndex.collectAsState()
+    val correctNumbers by vm.correctNumbers.collectAsState()
 
     // Reset color flash after a delay
     if (gameState.matchStatus != MatchStatus.NONE) {
@@ -51,6 +52,10 @@ fun GameScreen(vm: GameViewModel) {
         Text(
             text = "Score: $score",
             style = MaterialTheme.typography.headlineLarge
+        )
+        Text(
+            text = "Correct numbers: \n$correctNumbers",
+            textAlign = TextAlign.Center
         )
         Text(
             text = "Current event: \n${currentIndex+1}",
