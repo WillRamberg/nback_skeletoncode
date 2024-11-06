@@ -8,6 +8,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -21,11 +22,20 @@ import mobappdev.example.nback_cimpl.ui.viewmodels.GameVM
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameType
 import mobappdev.example.nback_cimpl.ui.viewmodels.FakeVM
 import mobappdev.example.nback_cimpl.R
+import mobappdev.example.nback_cimpl.ui.viewmodels.MatchStatus
 
 @Composable
 fun GameScreen(vm: GameViewModel) {
     val gameState by vm.gameState.collectAsState()
     val score by vm.score.collectAsState()
+
+    // Reset color flash after a delay
+    if (gameState.matchStatus != MatchStatus.NONE) {
+        LaunchedEffect(gameState.matchStatus) {
+            kotlinx.coroutines.delay(500) // Flash duration of 500ms
+            vm.resetMatchStatus() // New function to reset the status
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -34,13 +44,11 @@ fun GameScreen(vm: GameViewModel) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Display the current score
         Text(
             text = "Score: $score",
             style = MaterialTheme.typography.headlineLarge
         )
 
-        // Create a 3x3 grid for the game
         for (row in 0 until 3) {
             Row(
                 horizontalArrangement = Arrangement.Center,
@@ -48,27 +56,32 @@ fun GameScreen(vm: GameViewModel) {
             ) {
                 for (col in 0 until 3) {
                     val index = row * 3 + col + 1
+                    val circleColor = when {
+                        index == gameState.eventValue -> when (gameState.matchStatus) {
+                            MatchStatus.CORRECT -> Color.Green
+                            MatchStatus.INCORRECT -> Color.Red
+                            else -> Color.Yellow
+                        }
+                        else -> Color.Gray
+                    }
+
                     Box(
                         modifier = Modifier
                             .size(80.dp)
                             .padding(4.dp)
-                            .background(
-                                if (index == gameState.eventValue) Color.Yellow else Color.Gray,
-                                shape = CircleShape
-                            )
+                            .background(circleColor, shape = CircleShape)
                     )
                 }
             }
         }
 
-        // Button to start the game
         Button(
             onClick = { vm.startGame() },
             modifier = Modifier.padding(top = 16.dp)
         ) {
             Text(text = "Start Game")
         }
-        //Button to check when game is on
+
         Button(
             onClick = { vm.checkMatch() },
             modifier = Modifier.padding(top = 16.dp)

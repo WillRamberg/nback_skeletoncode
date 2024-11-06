@@ -47,6 +47,7 @@ interface GameViewModel {
     fun startGame()
 
     fun checkMatch()
+    fun resetMatchStatus()
 }
 
 class GameVM(
@@ -107,31 +108,23 @@ class GameVM(
             val currentEvent = _gameState.value.eventValue
             val nBackEvent = events[currentIndex - nBack]
 
-            // Log current values
-            Log.d("GameVM", "Checking match at index $currentIndex:")
-            Log.d("GameVM", "Current Event: $currentEvent, nBack Event: $nBackEvent")
-
             if (currentEvent == nBackEvent && !matchChecked) {
-                // Log match found
-                Log.d("GameVM", "Match found! Current Event equals nBack Event.")
-
                 _score.value += 1
                 matchChecked = true
-
-                // Log score update
-                Log.d("GameVM", "Score updated: ${_score.value}")
-            } else {
-                // Log no match
-                if (currentEvent != nBackEvent) {
-                    Log.d("GameVM", "No match. Current Event does not equal nBack Event.")
-                } else {
-                    Log.d("GameVM", "Match already checked for this pair.")
-                }
+                _gameState.value = _gameState.value.copy(matchStatus = MatchStatus.CORRECT)
+            } else if (!matchChecked) {
+                matchChecked = true
+                if(_score.value > 0)
+                    _score.value -= 1
+                _gameState.value = _gameState.value.copy(matchStatus = MatchStatus.INCORRECT)
             }
         } else {
-            // Log if index is too low for a valid match
-            Log.d("GameVM", "Index too low for match check. Current Index: $currentIndex")
+            _gameState.value = _gameState.value.copy(matchStatus = MatchStatus.NONE)
         }
+    }
+
+    override fun resetMatchStatus() {
+        _gameState.value = _gameState.value.copy(matchStatus = MatchStatus.NONE)
     }
 
     private fun resetGame() {
@@ -160,7 +153,7 @@ class GameVM(
 
     private fun mapEventValueToLetter(eventValue: Int): String {
         return if (eventValue in 1..9) {
-            ('A' + eventValue - 1).toString()  // Maps 1 -> 'A', 2 -> 'B', ..., 26 -> 'Z'
+            ('A' + eventValue - 1).toString()  // Maps 1 -> 'A', 2 -> 'B', ...
         } else {
             "Invalid" // Return invalid if the value is outside the range
         }
@@ -247,10 +240,14 @@ enum class GameType{
     AudioVisual
 }
 
+enum class MatchStatus {
+    CORRECT, INCORRECT, NONE
+}
+
 data class GameState(
-    // You can use this state to push values from the VM to your UI.
-    val gameType: GameType = GameType.Visual,  // Type of the game
-    val eventValue: Int = -1  // The value of the array string
+    val gameType: GameType = GameType.Visual,
+    val eventValue: Int = -1,
+    val matchStatus: MatchStatus = MatchStatus.NONE // Track match status
 )
 
 class FakeVM: GameViewModel{
@@ -270,5 +267,8 @@ class FakeVM: GameViewModel{
     }
 
     override fun checkMatch() {
+    }
+
+    override fun resetMatchStatus() {
     }
 }
