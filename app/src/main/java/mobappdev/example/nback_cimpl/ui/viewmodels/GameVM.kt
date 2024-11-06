@@ -1,5 +1,7 @@
 package mobappdev.example.nback_cimpl.ui.viewmodels
 
+import android.content.Context
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 import mobappdev.example.nback_cimpl.GameApplication
 import mobappdev.example.nback_cimpl.NBackHelper
 import mobappdev.example.nback_cimpl.data.UserPreferencesRepository
+import java.util.Locale
 
 /**
  * This is the GameViewModel.
@@ -47,8 +50,9 @@ interface GameViewModel {
 }
 
 class GameVM(
-    private val userPreferencesRepository: UserPreferencesRepository
-): GameViewModel, ViewModel() {
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val context: Context
+): GameViewModel, ViewModel(), TextToSpeech.OnInitListener{
     private val _gameState = MutableStateFlow(GameState())
     override val gameState: StateFlow<GameState>
         get() = _gameState.asStateFlow()
@@ -64,11 +68,17 @@ class GameVM(
     // nBack is currently hardcoded
     override val nBack: Int = 2
 
+    private var currentIndex = -1
+    private var matchChecked = false
+
     private var job: Job? = null  // coroutine job for the game event
     private val eventInterval: Long = 2000L  // 2000 ms (2s)
 
     private val nBackHelper = NBackHelper()  // Helper that generate the event array
     private var events = emptyArray<Int>()  // Array with all events
+
+    private var textToSpeech: TextToSpeech? = null
+
 
     override fun setGameType(gameType: GameType) {
         // update the gametype in the gamestate
@@ -76,7 +86,7 @@ class GameVM(
     }
 
     override fun startGame() {
-        job?.cancel()  // Cancel any existing game loop
+        resetGame()  // Reset game before starting a new game
 
         // Get the events from our C-model (returns IntArray, so we need to convert to Array<Int>)
         events = nBackHelper.generateNBackString(10, 9, 30, nBack).toList().toTypedArray()  // Todo Higher Grade: currently the size etc. are hardcoded, make these based on user input
@@ -84,7 +94,7 @@ class GameVM(
 
         job = viewModelScope.launch {
             when (gameState.value.gameType) {
-                GameType.Audio -> runAudioGame()
+                GameType.Audio -> runAudioGame(events)
                 GameType.AudioVisual -> runAudioVisualGame()
                 GameType.Visual -> runVisualGame(events)
             }
@@ -93,22 +103,84 @@ class GameVM(
     }
 
     override fun checkMatch() {
-        /**
-         * Todo: This function should check if there is a match when the user presses a match button
-         * Make sure the user can only register a match once for each event.
-         */
-    }
-    private fun runAudioGame() {
-        // Todo: Make work for Basic grade
-    }
+        if (currentIndex >= nBack) {
+            val currentEvent = _gameState.value.eventValue
+            val nBackEvent = events[currentIndex - nBack]
 
-    private suspend fun runVisualGame(events: Array<Int>){
-        // Todo: Replace this code for actual game code
-        for (value in events) {
-            _gameState.value = _gameState.value.copy(eventValue = value)
-            delay(eventInterval)
+            // Log current values
+            Log.d("GameVM", "Checking match at index $currentIndex:")
+            Log.d("GameVM", "Current Event: $currentEvent, nBack Event: $nBackEvent")
+
+            if (currentEvent == nBackEvent && !matchChecked) {
+                // Log match found
+                Log.d("GameVM", "Match found! Current Event equals nBack Event.")
+
+                _score.value += 1
+                matchChecked = true
+
+                // Log score update
+                Log.d("GameVM", "Score updated: ${_score.value}")
+            } else {
+                // Log no match
+                if (currentEvent != nBackEvent) {
+                    Log.d("GameVM", "No match. Current Event does not equal nBack Event.")
+                } else {
+                    Log.d("GameVM", "Match already checked for this pair.")
+                }
+            }
+        } else {
+            // Log if index is too low for a valid match
+            Log.d("GameVM", "Index too low for match check. Current Index: $currentIndex")
         }
+    }
 
+    private fun resetGame() {
+        job?.cancel() // Cancel any ongoing game loop
+
+        // Reset all necessary properties
+        _score.value = 0  // Reset score to 0
+        currentIndex = -1  // Reset index to its initial state
+        matchChecked = false // Reset match check status
+        events = emptyArray() // Clear any generated events
+
+        // Optionally, reset the game state to its default if necessary
+        _gameState.value = GameState() // Resets the game state to initial values
+        Log.d("GameVM", "Game has been reset.")
+    }
+
+    private suspend fun runAudioGame(events: Array<Int>) {
+        for (value in events) {
+            _gameState.value = _gameState.value.copy(eventValue = value) // Update eventValue
+            currentIndex += 1
+            playAudioForEvent(value)  // Now this uses TTS to speak the event letter
+            delay(eventInterval) // Delay to wait for the next event
+            matchChecked = false
+        }
+    }
+
+    private fun mapEventValueToLetter(eventValue: Int): String {
+        return if (eventValue in 1..9) {
+            ('A' + eventValue - 1).toString()  // Maps 1 -> 'A', 2 -> 'B', ..., 26 -> 'Z'
+        } else {
+            "Invalid" // Return invalid if the value is outside the range
+        }
+    }
+
+    private fun playAudioForEvent(eventValue: Int) {
+        val eventLetter = mapEventValueToLetter(eventValue)
+        Log.d("GameVM", "Playing TTS for event: $eventLetter")
+
+        // Use TTS to read out the event letter
+        speak(eventLetter)
+    }
+
+    private suspend fun runVisualGame(events: Array<Int>) {
+        for (value in events) {
+            _gameState.value = _gameState.value.copy(eventValue = value) // Update eventValue
+            currentIndex += 1
+            delay(eventInterval) // Delay to see the color change
+            matchChecked = false
+        }
     }
 
     private fun runAudioVisualGame(){
@@ -119,17 +191,51 @@ class GameVM(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as GameApplication)
-                GameVM(application.userPreferencesRespository)
+                GameVM(application.userPreferencesRespository, application.applicationContext)
             }
         }
     }
 
     init {
         // Code that runs during creation of the vm
+        textToSpeech = TextToSpeech(context, this)
+
         viewModelScope.launch {
             userPreferencesRepository.highscore.collect {
                 _highscore.value = it
             }
+        }
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            // The TTS engine was initialized successfully
+            val langResult = textToSpeech?.setLanguage(Locale.ENGLISH)
+
+            if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("GameVM", "Language is not supported or missing data")
+            } else {
+                Log.d("GameVM", "Text-to-Speech Initialized successfully")
+            }
+        } else {
+            Log.e("GameVM", "Text-to-Speech initialization failed")
+        }
+    }
+
+    private fun speak(text: String) {
+        textToSpeech?.let {
+            if (it.isSpeaking) {
+                it.stop() // Stop speaking if something is already being spoken
+            }
+            it.speak(text, TextToSpeech.QUEUE_FLUSH, null, null) // Speak the event
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        textToSpeech?.apply {
+            stop()  // Stop any ongoing speech
+            shutdown()  // Properly release TTS resources
         }
     }
 }
